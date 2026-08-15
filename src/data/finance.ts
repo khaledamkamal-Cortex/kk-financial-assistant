@@ -230,7 +230,13 @@ export const financeService = {
 
   // Load all entries. Uses Supabase when signed in (mirroring to the local
   // cache), otherwise the local cache. `synced` reports which tier answered.
+  //
+  // On the first signed-in load of a device that already has local entries
+  // (created offline / before the account existed), those entries are merged
+  // INTO the cloud instead of being overwritten by the (possibly empty) cloud
+  // set — so "use offline first, then create an account" uploads existing data.
   async list(): Promise<{ entries: FinanceEntry[]; synced: boolean }> {
+    const local = loadLocal()
     const uid = await currentUserId()
     if (uid && supabase) {
       const { data, error } = await supabase
@@ -238,12 +244,28 @@ export const financeService = {
         .select('*')
         .order('date', { ascending: false })
       if (!error && data) {
-        const entries = (data as FinanceRow[]).map(rowToEntry)
-        saveLocal(entries)
-        return { entries, synced: true }
+        const cloud = (data as FinanceRow[]).map(rowToEntry)
+        const cloudIds = new Set(cloud.map((e) => e.id))
+        const localOnly = local.filter((e) => !cloudIds.has(e.id))
+        if (localOnly.length > 0) {
+          // Upload device-only entries. If this fails they still stay in the
+          // returned list and the local cache, and will be retried next load.
+          try {
+            await supabase
+              .from('finance_entries')
+              .upsert(localOnly.map((e) => entryToRow(e, uid)), { onConflict: 'id' })
+          } catch {
+            // ignore — entries are preserved locally either way
+          }
+        }
+        const merged = [...cloud, ...localOnly].sort((a, b) =>
+          a.date < b.date ? 1 : a.date > b.date ? -1 : 0
+        )
+        saveLocal(merged)
+        return { entries: merged, synced: true }
       }
     }
-    return { entries: loadLocal(), synced: false }
+    return { entries: local, synced: false }
   },
 
   async upsert(entry: FinanceEntry): Promise<{ synced: boolean }> {

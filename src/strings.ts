@@ -11,7 +11,14 @@ export const t = {
   finSignUp: 'Sign up',
   finSignOut: 'Sign out',
   finSignedInAs: 'Signed in as',
-  finSignUpDone: 'Account created. Check your inbox if email confirmation is required, then sign in.',
+  finSignUpDone: 'Account created. Check your email for a confirmation link, then sign in.',
+  finErrEmailInvalid: 'Enter a valid email address.',
+  finErrPasswordShort: 'Password must be at least 6 characters.',
+  finErrAlreadyRegistered: 'This email is already registered — sign in instead.',
+  finErrSignupsDisabled: 'Sign-ups are disabled for this project — enable Email signups in Supabase.',
+  finErrWrongCredentials: 'Wrong email or password.',
+  finErrEmailNotConfirmed:
+    "Please confirm your email first (check your inbox), or disable 'Confirm email' in Supabase Auth settings.",
 
   // Tracker
   finAdd: 'Add',

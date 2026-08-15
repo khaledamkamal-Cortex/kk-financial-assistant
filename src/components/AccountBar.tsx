@@ -41,14 +41,33 @@ export default function AccountBar({ onAuthChange }: Props) {
     return <div className="accountbar accountbar--local muted">{t.finLocalMode}</div>
   }
 
+  // Client-side validation before hitting the API. Returns an error string or null.
+  function validate(): string | null {
+    if (!email.trim() || !email.includes('@')) return t.finErrEmailInvalid
+    if (password.length < 6) return t.finErrPasswordShort
+    return null
+  }
+
   async function signIn() {
     setError('')
     setInfo('')
+    const invalid = validate()
+    if (invalid) {
+      setError(invalid)
+      return
+    }
     setBusy(true)
     try {
-      const { error: err } = await supabase!.auth.signInWithPassword({ email, password })
-      if (err) setError(err.message)
-      else {
+      const { error: err } = await supabase!.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
+      if (err) {
+        if (/invalid login credentials/i.test(err.message)) setError(t.finErrWrongCredentials)
+        else if (/email not confirmed/i.test(err.message)) setError(t.finErrEmailNotConfirmed)
+        else setError(err.message)
+      } else {
+        // Success — onAuthStateChange updates the UI and reloads the data.
         setEmail('')
         setPassword('')
       }
@@ -60,11 +79,38 @@ export default function AccountBar({ onAuthChange }: Props) {
   async function signUp() {
     setError('')
     setInfo('')
+    const invalid = validate()
+    if (invalid) {
+      setError(invalid)
+      return
+    }
     setBusy(true)
     try {
-      const { error: err } = await supabase!.auth.signUp({ email, password })
-      if (err) setError(err.message)
-      else setInfo(t.finSignUpDone)
+      const { data, error: err } = await supabase!.auth.signUp({
+        email: email.trim(),
+        password,
+      })
+      if (err) {
+        if (/already registered/i.test(err.message)) setError(t.finErrAlreadyRegistered)
+        else if (/password.*(at least|too short|characters)/i.test(err.message))
+          setError(t.finErrPasswordShort)
+        else if (/signups?( are)? (not allowed|disabled)/i.test(err.message))
+          setError(t.finErrSignupsDisabled)
+        else setError(err.message)
+      } else if (data.session) {
+        // Email confirmation is OFF — the user is signed in right away;
+        // onAuthStateChange updates the UI and reloads the data.
+        setEmail('')
+        setPassword('')
+      } else if (data.user && data.user.identities && data.user.identities.length === 0) {
+        // Confirmation is ON and the email already exists: Supabase returns a
+        // stub user with no identities instead of an error (anti-enumeration).
+        setError(t.finErrAlreadyRegistered)
+      } else {
+        // Confirmation is ON — account created but no session yet. Say so
+        // clearly instead of looking like a silent failure.
+        setInfo(t.finSignUpDone)
+      }
     } finally {
       setBusy(false)
     }

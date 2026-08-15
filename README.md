@@ -56,6 +56,30 @@ To sync records across devices:
 
 Core sync needs **only migration 0001**.
 
+### Troubleshooting sign-in
+
+If sign-up / sign-in "does nothing" or errors, check these in your Supabase
+project dashboard:
+
+1. **Email provider enabled** — Authentication → Sign In / Providers → make
+   sure **Email** is enabled. If it is disabled, sign-up fails with
+   "sign-ups are disabled".
+2. **Email confirmation** — by default Supabase requires new users to click a
+   confirmation link before they can sign in, so after sign-up the app shows
+   "Account created. Check your email…" and signing in fails with "Email not
+   confirmed" until the link is clicked. Either:
+   - turn **OFF** "Confirm email" (Authentication → Sign In / Providers →
+     Email) — simplest, users are signed in immediately after sign-up; **or**
+   - keep it on and configure **Authentication → URL Configuration**: set
+     **Site URL** to your deployed URL (e.g. your Vercel domain) and add it to
+     **Redirect URLs** — otherwise confirmation emails link to
+     `localhost:3000` and the confirmation link appears broken.
+3. **Password length** — the default minimum password length is **6
+   characters**; shorter passwords are rejected.
+4. **Privacy** — each account's data is private via row-level security: users
+   only ever see their own entries, even though all accounts share one
+   database.
+
 ## Payment reminders (optional, backend-ready)
 
 The data model and backend support push reminders for unpaid entries whose
