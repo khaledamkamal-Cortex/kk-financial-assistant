@@ -114,3 +114,18 @@ For example on Vercel: create a new project from this repo and set
 **Root Directory** to `kk-financial-assistant` — the defaults
 (`npm run build`, output `dist/`) work as-is. Set the two `VITE_SUPABASE_*`
 environment variables in the project settings if you use sync.
+
+## Install as an app (PWA)
+
+Once deployed, the app can be installed to your phone's home screen and used
+like a native app:
+
+- **iPhone / iPad:** open the deployed URL in **Safari**, tap the **Share**
+  button, then **Add to Home Screen**.
+- **Android:** open it in **Chrome** and tap **Install app** (or menu →
+  **Add to Home screen**).
+
+The app shell is cached by a service worker, so it opens and works offline;
+data entered offline lives in local storage and syncs to Supabase when you're
+back online (if sync is configured). Updates are picked up automatically on
+the next visit.
