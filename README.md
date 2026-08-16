@@ -7,8 +7,14 @@ as a completely standalone single-screen app.
 ## Features
 
 - **Record types** — lecture 🎓, referred case 🏥, hospital 🏨, other 📌; each
-  with site/venue, title, fee + currency (EGP/USD/EUR/SAR/AED), date, optional
-  case reference and notes.
+  with vendor/hospital, title, fee + currency (EGP/USD/EUR/SAR/AED), date,
+  optional case reference and notes.
+- **Vendor / Hospital list** — a Settings page (⚙️ in the header) manages a
+  reusable list of vendors/hospitals; records pick from a dropdown (with a
+  manual "Other" fallback) and the list doubles as a filter on the main
+  screen. Renaming a vendor offers to update existing records.
+- **Dedicated sign-up page** — creating an account collects name, email,
+  phone number and country (stored as Supabase user metadata).
 - **Paid / unpaid tracking** — one-tap paid toggle, per-currency summary cards
   (total, collected, outstanding).
 - **Filters & sorting** — period filter (all time / this month / last month /
@@ -54,7 +60,10 @@ To sync records across devices:
    under the summary switches from "Saved on this device" to "Synced via your
    account".
 
-Core sync needs **only migration 0001**.
+Core sync needs **only migration 0001**. Also run
+[`supabase/migrations/0003_vendors.sql`](supabase/migrations/0003_vendors.sql)
+so the Vendor / Hospital list (Settings page) syncs too — without it the list
+still works but stays device-local.
 
 ### Troubleshooting sign-in
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import AccountBar from '../components/AccountBar'
+import { navigate } from '../lib/router'
 import { t } from '../strings'
 import {
   financeService,
@@ -9,6 +10,7 @@ import {
   type FinanceEntry,
   type FinanceEntryType,
 } from '../data/finance'
+import { vendorService } from '../data/vendors'
 
 type TypeFilter = 'all' | FinanceEntryType
 type StatusFilter = 'all' | 'paid' | 'unpaid'
@@ -86,10 +88,12 @@ function emptyDraft(): FinanceEntry {
 
 export default function Tracker() {
   const [entries, setEntries] = useState<FinanceEntry[]>([])
+  const [vendorNames, setVendorNames] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [synced, setSynced] = useState(false)
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [siteFilter, setSiteFilter] = useState('all')
   const [period, setPeriod] = useState<Period>('all')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
@@ -98,16 +102,17 @@ export default function Tracker() {
   const [showStats, setShowStats] = useState(false)
   const [editing, setEditing] = useState<FinanceEntry | null>(null)
   const [isNew, setIsNew] = useState(false)
+  const [siteCustom, setSiteCustom] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let active = true
-    financeService
-      .list()
-      .then(({ entries: list, synced: s }) => {
+    Promise.all([financeService.list(), vendorService.list()])
+      .then(([{ entries: list, synced: s }, { vendors }]) => {
         if (!active) return
         setEntries(list)
         setSynced(s)
+        setVendorNames(vendors.map((v) => v.name))
         setLoading(false)
       })
       .catch(() => {
@@ -119,9 +124,13 @@ export default function Tracker() {
   }, [])
 
   async function reload() {
-    const { entries: list, synced: s } = await financeService.list()
+    const [{ entries: list, synced: s }, { vendors }] = await Promise.all([
+      financeService.list(),
+      vendorService.list(),
+    ])
     setEntries(list)
     setSynced(s)
+    setVendorNames(vendors.map((v) => v.name))
   }
 
   const range = useMemo(() => {
@@ -135,6 +144,7 @@ export default function Tracker() {
       if (typeFilter !== 'all' && e.type !== typeFilter) return false
       if (statusFilter === 'paid' && !e.paid) return false
       if (statusFilter === 'unpaid' && e.paid) return false
+      if (siteFilter !== 'all' && e.site.trim() !== siteFilter) return false
       if (range.from && e.date < range.from) return false
       if (range.to && e.date > range.to) return false
       if (q) {
@@ -143,7 +153,18 @@ export default function Tracker() {
       }
       return true
     })
-  }, [entries, typeFilter, statusFilter, range, query])
+  }, [entries, typeFilter, statusFilter, siteFilter, range, query])
+
+  // Vendor filter options: the managed list plus any names already used in
+  // records (so old free-text entries stay filterable).
+  const siteOptions = useMemo(() => {
+    const set = new Set(vendorNames)
+    for (const e of entries) {
+      const s = e.site.trim()
+      if (s) set.add(s)
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [vendorNames, entries])
 
   const sorted = useMemo(() => {
     const arr = [...filtered]
@@ -182,10 +203,12 @@ export default function Tracker() {
   function startAdd() {
     setEditing(emptyDraft())
     setIsNew(true)
+    setSiteCustom(false)
   }
   function startEdit(e: FinanceEntry) {
     setEditing({ ...e, remindAt: e.remindAt ?? '' })
     setIsNew(false)
+    setSiteCustom(e.site.trim() !== '' && !vendorNames.includes(e.site))
   }
   async function remove(id: string) {
     if (!window.confirm(t.finConfirmDelete)) return
@@ -260,6 +283,14 @@ export default function Tracker() {
       <header className="app-header">
         <span className="app-header__logo">💰</span>
         <h1 className="app-header__title">{t.finTitle}</h1>
+        <button
+          className="app-header__action"
+          onClick={() => navigate('#/settings')}
+          title={t.setTitle}
+          aria-label={t.setTitle}
+        >
+          ⚙️
+        </button>
       </header>
       <AccountBar onAuthChange={() => void reload()} />
       <div className="screen">
@@ -426,6 +457,22 @@ export default function Tracker() {
               <option value="unpaid">{t.finUnpaid}</option>
             </select>
           </div>
+          {siteOptions.length > 0 && (
+            <div className="fin-filter-row">
+              <select
+                className="fin-sitefilter"
+                value={siteFilter}
+                onChange={(e) => setSiteFilter(e.target.value)}
+              >
+                <option value="all">{t.finSiteFilterAll}</option>
+                {siteOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -505,11 +552,39 @@ export default function Tracker() {
 
             <div className="field">
               <label>{t.finSite}</label>
-              <input
-                value={editing.site}
-                onChange={(e) => setEditing({ ...editing, site: e.target.value })}
-                placeholder={t.finSitePh}
-              />
+              <select
+                value={siteCustom ? '__custom__' : vendorNames.includes(editing.site) ? editing.site : ''}
+                onChange={(e) => {
+                  const v = e.target.value
+                  if (v === '__custom__') {
+                    setSiteCustom(true)
+                  } else {
+                    setSiteCustom(false)
+                    setEditing({ ...editing, site: v })
+                  }
+                }}
+              >
+                <option value="">{t.finSiteNone}</option>
+                {vendorNames.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+                <option value="__custom__">{t.finSiteOther}</option>
+              </select>
+              {siteCustom && (
+                <input
+                  className="fin-siteinput"
+                  value={editing.site}
+                  onChange={(e) => setEditing({ ...editing, site: e.target.value })}
+                  placeholder={t.finSitePh}
+                />
+              )}
+              <span className="fin-hint muted">
+                <button className="fin-link" type="button" onClick={() => navigate('#/settings')}>
+                  {t.finManageVendors}
+                </button>
+              </span>
             </div>
 
             <div className="fin-grid2">

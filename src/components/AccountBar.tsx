@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { navigate } from '../lib/router'
 import { t } from '../strings'
 
 // ---------------------------------------------------------------------------
 // Minimal auth / sync bar.
 //   • Supabase not configured → a muted "device-local mode" line.
-//   • Configured + signed out  → compact email/password sign-in + sign-up.
-//   • Configured + signed in   → the user's email + a sign-out button.
+//   • Configured + signed out  → compact email/password sign-in; the sign-up
+//     button opens the dedicated sign-up page (#/signup).
+//   • Configured + signed in   → the user's name (or email) + sign-out.
 // `onAuthChange` fires on every auth state change so the tracker can reload.
 // ---------------------------------------------------------------------------
 
@@ -15,20 +17,21 @@ type Props = {
 }
 
 export default function AccountBar({ onAuthChange }: Props) {
-  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [userLabel, setUserLabel] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [info, setInfo] = useState('')
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     if (!supabase) return
     supabase.auth.getUser().then(({ data }) => {
-      setUserEmail(data.user?.email ?? null)
+      const u = data.user
+      setUserLabel(u ? (u.user_metadata?.full_name as string | undefined) || u.email || null : null)
     })
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserEmail(session?.user?.email ?? null)
+      const u = session?.user
+      setUserLabel(u ? (u.user_metadata?.full_name as string | undefined) || u.email || null : null)
       onAuthChange()
     })
     return () => {
@@ -50,7 +53,6 @@ export default function AccountBar({ onAuthChange }: Props) {
 
   async function signIn() {
     setError('')
-    setInfo('')
     const invalid = validate()
     if (invalid) {
       setError(invalid)
@@ -76,46 +78,6 @@ export default function AccountBar({ onAuthChange }: Props) {
     }
   }
 
-  async function signUp() {
-    setError('')
-    setInfo('')
-    const invalid = validate()
-    if (invalid) {
-      setError(invalid)
-      return
-    }
-    setBusy(true)
-    try {
-      const { data, error: err } = await supabase!.auth.signUp({
-        email: email.trim(),
-        password,
-      })
-      if (err) {
-        if (/already registered/i.test(err.message)) setError(t.finErrAlreadyRegistered)
-        else if (/password.*(at least|too short|characters)/i.test(err.message))
-          setError(t.finErrPasswordShort)
-        else if (/signups?( are)? (not allowed|disabled)/i.test(err.message))
-          setError(t.finErrSignupsDisabled)
-        else setError(err.message)
-      } else if (data.session) {
-        // Email confirmation is OFF — the user is signed in right away;
-        // onAuthStateChange updates the UI and reloads the data.
-        setEmail('')
-        setPassword('')
-      } else if (data.user && data.user.identities && data.user.identities.length === 0) {
-        // Confirmation is ON and the email already exists: Supabase returns a
-        // stub user with no identities instead of an error (anti-enumeration).
-        setError(t.finErrAlreadyRegistered)
-      } else {
-        // Confirmation is ON — account created but no session yet. Say so
-        // clearly instead of looking like a silent failure.
-        setInfo(t.finSignUpDone)
-      }
-    } finally {
-      setBusy(false)
-    }
-  }
-
   async function signOut() {
     setBusy(true)
     try {
@@ -125,11 +87,11 @@ export default function AccountBar({ onAuthChange }: Props) {
     }
   }
 
-  if (userEmail) {
+  if (userLabel) {
     return (
       <div className="accountbar">
         <span className="accountbar__email" title={t.finSignedInAs}>
-          {userEmail}
+          {userLabel}
         </span>
         <button className="btn btn--outline accountbar__btn" onClick={signOut} disabled={busy}>
           {t.finSignOut}
@@ -167,14 +129,13 @@ export default function AccountBar({ onAuthChange }: Props) {
         <button
           className="btn btn--ghost accountbar__btn"
           type="button"
-          onClick={signUp}
-          disabled={busy || !email || !password}
+          onClick={() => navigate('#/signup')}
+          disabled={busy}
         >
           {t.finSignUp}
         </button>
       </form>
       {error && <div className="error-text">{error}</div>}
-      {info && <div className="accountbar__info muted">{info}</div>}
     </div>
   )
 }

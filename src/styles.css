@@ -100,6 +100,22 @@ ul {
   font-weight: 800;
 }
 
+.app-header__action {
+  margin-inline-start: auto;
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px 2px;
+  color: #fff;
+}
+
+.app-header__back {
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 700;
+  color: #fff;
+  padding: 2px 10px 2px 0;
+}
+
 /* ---------- Account / sync bar ---------- */
 .accountbar {
   display: flex;
@@ -629,4 +645,100 @@ ul {
   display: block;
   font-size: 12px;
   margin-top: 4px;
+}
+.fin-hint .fin-link {
+  font-size: 12px;
+}
+
+.fin-siteinput {
+  margin-top: 8px;
+}
+
+.fin-filter-row + .fin-filter-row {
+  margin-top: 8px;
+}
+.fin-filter-row .fin-sitefilter {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ================= Sub-pages (sign-up / settings) ================= */
+.page-card {
+  padding: 20px 18px;
+}
+.page-intro {
+  font-size: 13.5px;
+  margin-bottom: 16px;
+}
+.page-msg {
+  margin-bottom: 12px;
+}
+.page-backbtn {
+  margin-top: 14px;
+}
+.page-section-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--gr-primary);
+  margin-bottom: 6px;
+}
+.page-syncbadge {
+  margin: 14px 0 0;
+}
+
+.set-addrow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.set-addrow input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.set-addrow input:focus {
+  outline: none;
+  border-color: var(--gr-accent);
+}
+.set-addbtn {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 11px 16px;
+  font-size: 14px;
+}
+
+.set-list {
+  margin-top: 4px;
+}
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+}
+.set-row:first-child {
+  border-top: none;
+}
+.set-row__name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  word-break: break-word;
+}
+.set-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.set-row input:focus {
+  outline: none;
+  border-color: var(--gr-accent);
 }
